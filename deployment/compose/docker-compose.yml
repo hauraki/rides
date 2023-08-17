@@ -1,0 +1,76 @@
+version: "3"
+name: rides
+
+services:
+  simulator:
+    restart: always
+    build:
+      context: ../../application/simulator
+      dockerfile: Dockerfile-dev
+    depends_on:
+      - db
+    volumes:
+      - ../../application/simulator:/simulator
+    environment:
+      POSTGRES_URL: ${POSTGRES_URL}
+  
+  backend:
+    restart: always
+    build:
+      context: ../../application/backend
+      dockerfile: Dockerfile-dev
+    volumes:
+      - ../../application/backend:/app
+    ports:
+      - 8080:8080
+    environment:
+      VIRTUAL_HOST: ${VIRTUAL_HOST}
+      VIRTUAL_PATH: /api/
+      VIRTUAL_DEST: /
+      SELF_SIGNED_HOST: ${VIRTUAL_HOST}
+      POSTGRES_URL: ${POSTGRES_URL}
+  
+  frontend:
+    restart: always
+    build:
+      context: ../../application/frontend
+      dockerfile: Dockerfile-dev
+    volumes:
+      - ../../application/frontend:/frontend
+    ports:
+      - 3000:3000
+    environment:
+      VIRTUAL_HOST: ${VIRTUAL_HOST}
+      VIRTUAL_PATH: /
+      SELF_SIGNED_HOST: ${VIRTUAL_HOST}
+  
+  db:
+    image: postgres:15.1-alpine
+    ports:
+      - 5432:5432
+    volumes:
+      - app-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  
+  nginx-proxy:
+    restart: always
+    image: jwilder/nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/nginx/vhost.d
+      - /usr/share/nginx/html
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./certs:/etc/nginx/certs
+
+  self-signed-proxy-companion:
+    restart: always
+    image: sebastienheyd/self-signed-proxy-companion
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./certs:/etc/nginx/certs:rw
+
+volumes:
+  app-db:
