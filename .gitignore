@@ -1,0 +1,5 @@
+.air.toml
+.env
+tmp
+
+secrets.yml
