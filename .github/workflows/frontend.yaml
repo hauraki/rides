@@ -1,0 +1,55 @@
+name: deploy frontend service
+
+on:
+  push:
+    branches:
+      - "releases/**"
+    paths:
+      - "application/frontend/**"
+  # allows deployment to be invoked manually through the GitHub Actions user interface
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      VERSION: ${{ github.sha }}
+      CONTAINER_REGISTRY: ${{ vars.CONTAINER_REGISTRY }}
+      REGISTRY_UN: ${{ vars.REGISTRY_UN }}
+      REGISTRY_PW: ${{ secrets.REGISTRY_PW  }}
+      NAME: frontend
+      DIRECTORY: frontend
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE.
+      - uses: actions/checkout@v3
+
+      #
+      # Builds the Docker image.
+      #
+      - name: Build
+        run: ./deployment/cd/build-image.sh
+
+      #
+      # Publishes the Docker image to the container registry.
+      #
+      - name: Publish
+        run: ./deployment/cd/push-image.sh
+
+      #
+      # Installs Kubectl and connects it to the cluster.
+      #
+      # https://github.com/marketplace/actions/kubernetes-cli-kubectl
+      #
+      - uses: tale/kubectl-action@v1
+        with:
+          base64-kube-config: ${{ secrets.KUBE_CONFIG }}
+          kubectl-version: v1.27.1
+
+      #
+      # Expands the configuration template and deploys the microservice.
+      #
+      - name: Deploy
+        run: ./deployment/cd/deploy.sh
