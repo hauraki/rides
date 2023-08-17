@@ -1,0 +1,6 @@
+/* added here so VSC plays along: it would simply ignore this setting in the parent tsconfig.json 🤷‍♂️ */ 
+{
+  "compilerOptions": {
+    "types": ["node", "jest"],                           /* Specify type package names to be included without being referenced in a source file. */
+  }
+}
