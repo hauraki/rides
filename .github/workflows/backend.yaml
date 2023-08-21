@@ -19,24 +19,10 @@ jobs:
       CONTAINER_REGISTRY: ${{ vars.CONTAINER_REGISTRY }}
       REGISTRY_UN: ${{ vars.REGISTRY_UN }}
       REGISTRY_PW: ${{ secrets.REGISTRY_PW  }}
-      NAME: backend
-      DIRECTORY: backend
 
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE.
       - uses: actions/checkout@v3
-
-      #
-      # Builds the Docker image.
-      #
-      - name: Build
-        run: ./deployment/cd/build-image.sh
-
-      #
-      # Publishes the Docker image to the container registry.
-      #
-      - name: Publish
-        run: ./deployment/cd/push-image.sh
 
       #
       # Installs Kubectl and connects it to the cluster.
@@ -48,8 +34,5 @@ jobs:
           base64-kube-config: ${{ secrets.KUBE_CONFIG }}
           kubectl-version: v1.27.1
 
-      #
-      # Expands the configuration template and deploys the microservice.
-      #
-      - name: Deploy
-        run: ./deployment/cd/deploy.sh
+      - name: Build & Deploy
+        run: ./deployment/kubernetes/cd/deploy.sh backend
