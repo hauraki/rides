@@ -160,6 +160,7 @@ If you want to run this app on your own Minikube cluster, follow these steps:
 - if you are using Docker for Mac, [install docker-mac-net-connect](https://github.com/chipmk/docker-mac-net-connect) to access the Minikube node directly, without tunneling / port-binding 
 
 ##### Kubernetes Setup
+- [review and adjust your environment variables](#prepare-environment-variables-for-kubernetes), the given default values should work out of the box
 - run [this setup script](deployment/kubernetes/minikube/setup.sh) to prepare the Minikube cluster:
 ```bash
 ./deployment/kubernetes/minikube/setup.sh
