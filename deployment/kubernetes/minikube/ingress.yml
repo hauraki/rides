@@ -8,10 +8,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - rides.app
+        - $MINIKUBE_HOST
       secretName: rides-ingress-cert
   rules:
-    - host: rides.app
+    - host: $MINIKUBE_HOST
       http:
         paths:
           - path: /api/(.*)

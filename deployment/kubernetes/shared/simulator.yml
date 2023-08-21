@@ -17,7 +17,7 @@ spec:
       containers:
         - name: simulator
           image: $CONTAINER_REGISTRY/simulator:$VERSION
-          imagePullPolicy: Never
+          imagePullPolicy: $IMAGE_PULL_POLICY
           env:
             - name: POSTGRES_URL
               valueFrom:

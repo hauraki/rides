@@ -107,7 +107,8 @@ Go directly to: [Docker Compose](#docker-compose) | [Local Kubernetes](#local-ku
 
 In this section, I'll describe the different deployment options in more detail. If you are just looking for a quick start to get the app running locally, see [Getting Started](#getting-started) above. It's a Docker Compose setup that works pretty much out of the box.
 
-For the later Kubernetes deployment options, you will need to adjust and export some environment variables to make them available in scripts:
+### Prepare environment variables for Kubernetes
+For the different Kubernetes deployment options further below (not for Docker Compose though), you will need to adjust and export some environment variables to make them available in scripts:
 
 ```bash
 # copy the provided default values
@@ -119,9 +120,8 @@ cp .env.example .env
 set -a; source .env; set +a
 ```
 
-The last step needs to be repeated whenever you open a new shell. This is a bit error-prone and easy to forget. If you are on ZSH and Oh My Zsh I recommend the [dotenv plugin](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins/dotenv) or something similar to load the .env files automatically.
+The last step needs to be repeated whenever you open a new shell. This is a bit error-prone and easy to forget. If you are on ZSH and Oh My Zsh I recommend the [dotenv plugin](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins/dotenv) or something similar to load the `.env` file automatically.
 
-Also, I'd like to give another recommendation here for the [Bootstrapping Microservices](https://www.manning.com/books/bootstrapping-microservices-with-docker-kubernetes-and-terraform) book by Ashley Davis. I relied heavily on it to get my Azure Kubernetes and Continuous Deployment setup with Github Actions going, so if you are interested in these topics, make sure to check it out!
 ### Docker Compose
 With this first local deployment, I wanted to make it really easy for other developers to get started, on their own machines. It spins up all the necessary services automatically with a single command.
 
@@ -137,7 +137,7 @@ Finally, there is a companion service for nginx-proxy called [docker-self-signed
 #### Setup
 see [Getting Started](#getting-started) above
 ### Local Kubernetes
-Before deploying the app to a Kubernetes cluster in the cloud, I wanted to experiment locally. This boils down to quick feedback loops again: when building the Kubernetes manifests, this way I can easily run them against a local cluster for testing.
+Before deploying the app to a Kubernetes cluster in the cloud, I wanted to experiment locally. This boils down to quick feedback loops again: when building the Kubernetes config, this way I can easily run them against a local cluster for testing.
 
 Also, a local cluster means that images do not have to be pushed to a remote registry (such as [Docker Hub](https://hub.docker.com/)), but can be used directly from the local machine.
 
@@ -146,74 +146,38 @@ Docker Desktop actually already [includes a standalone Kubernetes server and cli
 So I looked for alternatives and went for [Minikube](https://minikube.sigs.k8s.io/docs/start/) instead. It is a tool to quickly spin up a single-node Kubernetes cluster. The node can be provisioned using different [drivers](https://minikube.sigs.k8s.io/docs/drivers/), I just went for the default option and deployed the node as Docker container (other options include Hyperkit, VirtualBox etc).
 
 In terms of Kubernetes manifest files, I needed to build the following:
-- [*deployment* and *service* for frontend](https://github.com/hauraki/rides/blob/master/deployment/minikube/frontend.yml)
-- [*deployment* for simulator](https://github.com/hauraki/rides/blob/master/deployment/minikube/simulator.yml) (no *service* needed, as it does not expose any HTTP)
-- [*deployment* and *service* for backend](https://github.com/hauraki/rides/blob/master/deployment/minikube/backend.yml)
-- [*ingress* to configure a gateway to the exposed frontend and backend services](https://github.com/hauraki/rides/blob/master/deployment/minikube/ingress.yml)
-- [*secret* to securely store the database password](https://github.com/hauraki/rides/blob/master/deployment/minikube/secrets.example.yml)
-
-What about the database, you may wonder? I decided to run it outside the cluster to keep it stateless, similarly to how I would do it in a production setup. After all, I do not want to tear down my application cluster only to find that I lost all my data.
+- [*deployment* and *service* for frontend](deployment/kubernetes/shared/frontend.yml)
+- [*deployment* for simulator](deployment/kubernetes/shared/simulator.yml) (no *service* needed, as it is not exposed via HTTP)
+- [*deployment* and *service* for backend](deployment/kubernetes/shared/backend.yml)
+- [*ingress* to configure a gateway for frontend and backend services](deployment/kubernetes/minikube/ingress.yml)
+- [*deployment* and *service* for a Postgres database server](deployment/kubernetes/minikube/frontend.yml) with a very basic config, data will be lost when the cluster is shut down
 #### Setup
 If you want to run this app on your own Minikube cluster, follow these steps:
-
+##### Prerequisites
 - [install kubectl](https://kubernetes.io/docs/tasks/tools/) , a command-line tool to run commands against Kubernetes clusters
-- [install Minikube](https://minikube.sigs.k8s.io/docs/start/)
-- enable the Minikube addon for ingress support:
+- [install Minikube](https://minikube.sigs.k8s.io/docs/start/), a nimble Kubernetes cluster for local development
+- [install mkcert](https://github.com/FiloSottile/mkcert), a simple zero-config tool to generate locally-trusted TLS certificates
+- if you are using Docker for Mac, [install docker-mac-net-connect](https://github.com/chipmk/docker-mac-net-connect) to access the Minikube node directly, without tunneling / port-binding 
+
+##### Kubernetes Setup
+- run [this setup script](deployment/kubernetes/minikube/setup.sh) to prepare the Minikube cluster:
 ```bash
-minikube addons enable ingress
+./deployment/kubernetes/minikube/setup.sh
 ```
 
-- start a Postgres database container in the same network as the Minikube node:
+- add an entry for your app to your `/etc/hosts` file (`rides.app` by default)
 ```bash
-docker run -d --name db -e POSTGRES_PASSWORD=secretpassword --network=minikube postgres:15.1-alpine
+sudo -- sh -c -e "echo '$(minikube ip) $MINIKUBE_HOST' >> /etc/hosts";
 ```
 
-- check that you can reach the database from the Minikube node:
+- open the app [in your browser](https://rides.app/) 🎉
+##### Kubernetes Deployment
+- to deploy a new version of a service, run [this deploy script](deployment/kubernetes/minikube/deploy.sh) with a `VERSION` of your choice (it is used to tag the image) and the service name (`simulator`, `frontend` or `backend`):
 ```bash
-minikube ssh
-ping db
-# output should show IP of the database container and indicate success
-```
-
-- [install mkcert](https://github.com/FiloSottile/mkcert), a handy zero-config tool to generate self-signed SSL certs
-- generate a cert for the domain `rides.app` (it will be trusted automatically):
-```bash
-mkcert rides.app
-```
-
-- create a Kubernetes secret named `rides-ingress-crt` with the certificate you just generated:
-```bash
-kubectl create secret tls rides-ingress-cert --key=rides.app-key.pem --cert=rides.app.pem
-```
-
-- remove the certificate files, we don't need them anymore:
-```bash
-rm rides.app.pem rides.app-key.pem
-```
-
-- prepare the `secrets.yml` file for the database connection string:
-```bash
-cp deployment/minikube/secrets.example.yml deployment/minikube/secrets.yml
-```
-
-- follow the instructions in the `secrets.yml` file; if you are using the database as suggested above, then you can get your connection string secret like this:
-```bash
-echo -n "postgres://postgres:secretpassword@db:5432/postgres?sslmode=disable" | base64
-```
-
-- add an entry for `rides.app` to your `/etc/hosts` file that points to the Minikube node's IP:
-```bash
-echo "$(minikube ip) rides.app" | sudo tee -a /etc/hosts
-```
-
-- if you are using Docker for Mac, you may not have direct access to the Minikube IP address; in this case use the excellent and lightweight [docker-mac-net-connect](https://github.com/chipmk/docker-mac-net-connect) tool that allows you to directly access Docker containers by their IP - no tunneling / port binding required!
-
-- run the script to build and deploy the Docker images, and make sure to specify a `VERSION` that will be used as image tag:
-```bash
-VERSION=1 ./deployment/minikube/deploy.sh
+VERSION=2 ./deployment/kubernetes/minikube/deploy.sh simulator
 ```
 - open the app [in your browser](https://rides.app/) 🎉
-- you can check the three pods for frontend, simulator and backend are running with:
+- you can check that all pods are running with:
 ```bash
 kubectl get pods
 ```
@@ -233,12 +197,12 @@ The Rides app can be run with any of the big cloud service providers (AWS, Googl
 I could have just clicked together the necessary parts by hand in the Azure Portal, but I wanted to lay down the *infrastructure as code* with [Terraform](https://www.terraform.io/). It can be used to automate the provisioning and management of resources in any cloud.
 
 I prepared Terraform config scripts for the automatic creation of the following cloud resources:
-- **[resource group](https://github.com/hauraki/rides/blob/master/infrastructure/resource-group.tf)**: a meta resource that logically groups all the other resources
-- **[networking](https://github.com/hauraki/rides/blob/master/infrastructure/networking.tf)**: a virtual network, subnets and private DNS to hook everything together
-- **[container registry](https://github.com/hauraki/rides/blob/master/infrastructure/container-registry.tf)**: a private registry where the Docker images can be stored
-- **[kubernetes cluster](https://github.com/hauraki/rides/blob/master/infrastructure/kubernetes-cluster.tf)**: a simple Kubernetes cluster with one node (for test purposes only and to keep costs low, would have to be more in production obviously) and the access config to the container registry
-- **[database](https://github.com/hauraki/rides/blob/master/infrastructure/database.tf)**: a Postgres server and a database in it, along with variables that allow you to choose your own username and password for it; just like in the Minikube setup above, the cluster will be *stateless* and the database server will run outside of it
-- **[variables](https://github.com/hauraki/rides/blob/master/infrastructure/variables.tf)**: dynamic parts of the infra config such as app name, Azure region and Kubernetes version can be set here
+- **[resource group](infrastructure/resource-group.tf)**: a meta resource that logically groups all the other resources
+- **[networking](infrastructure/networking.tf)**: a virtual network, subnets and private DNS to hook everything together
+- **[container registry](infrastructure/container-registry.tf)**: a private registry where the Docker images can be stored
+- **[kubernetes cluster](infrastructure/kubernetes-cluster.tf)**: a simple Kubernetes cluster with one node (for test purposes only and to keep costs low, would have to be more in production obviously) and the access config to the container registry
+- **[database](infrastructure/database.tf)**: a Postgres server and a database in it, along with variables that allow you to choose your own username and password for it; just like in the Minikube setup above, the cluster will be *stateless* and the database server will run outside of it
+- **[variables](infrastructure/variables.tf)**: dynamic parts of the infra config such as app name, Azure region and Kubernetes version can be set here
 
 The Docker images that I built in the previous Minikube section can be re-used here (they may need new tags though). This allows for a nice workflow:
 

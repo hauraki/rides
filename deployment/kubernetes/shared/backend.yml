@@ -15,7 +15,7 @@ spec:
       containers:
         - name: backend
           image: $CONTAINER_REGISTRY/backend:$VERSION
-          imagePullPolicy: Never
+          imagePullPolicy: $IMAGE_PULL_POLICY
           env:
             - name: POSTGRES_URL
               valueFrom:
@@ -30,7 +30,6 @@ metadata:
 spec:
   selector:
     app: backend
-  type: NodePort
   ports:
     - protocol: TCP
       port: 80

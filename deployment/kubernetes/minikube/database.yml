@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      db: postgres
+  template:
+    metadata:
+      labels:
+        db: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15.1-alpine
+          env:
+            - name: POSTGRES_PASSWORD
+              value: $MINIKUBE_POSTGRES_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  type: NodePort
+  selector:
+    db: postgres
+  ports:
+    - protocol: TCP
+      port: 5432

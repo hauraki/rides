@@ -15,7 +15,7 @@ spec:
       containers:
         - name: frontend
           image: $CONTAINER_REGISTRY/frontend:$VERSION
-          imagePullPolicy: Never
+          imagePullPolicy: $IMAGE_PULL_POLICY
 ---
 apiVersion: v1
 kind: Service
@@ -24,7 +24,6 @@ metadata:
 spec:
   selector:
     app: frontend
-  type: NodePort
   ports:
     - protocol: TCP
       port: 80
