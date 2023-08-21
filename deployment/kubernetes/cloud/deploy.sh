@@ -8,8 +8,9 @@
 
 set -u # or set -o nounset
 : "$CONTAINER_REGISTRY"
+: "$REGISTRY_UN"
+: "$REGISTRY_PW"
 : "$KC_CONTEXT_CLOUD"
-: "$CLOUD_DOMAIN"
 : "$VERSION" 
 : ${FULL_DEPLOY:=0}
 : "$1"
@@ -32,7 +33,7 @@ echo "Deploying $1 to cloud cluster..."
 kubectl config use-context $KC_CONTEXT_CLOUD
 
 if [ "$FULL_DEPLOY" = "1" ]; then
-  IMAGE_PULL_POLICY="Never"
+  IMAGE_PULL_POLICY="IfNotPresent"
   envsubst < ./deployment/kubernetes/shared/$1.yml | kubectl apply -f -
 else
   kubectl set image deployment/$1 $1=$CONTAINER_REGISTRY/$1:$VERSION
