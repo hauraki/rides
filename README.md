@@ -1,9 +1,9 @@
 ## Intro
 Rides is a ride-sharing simulation (a "mini Uber clone"), built as a distributed system with multiple services. [Here is a demo](https://rides.hauraki.de). It is based on [the original Rides app by Juraj Majerik](https://github.com/jurajmajerik/rides/tree/master). He describes how he went about it in his [blog](https://jurajmajerik.com/), which I followed loosely to build my own version. I modified and extended the original app further for my own learning and understanding in different areas.
 
-Some of my additions here are about improving the code of the app, particularly the Typescript bits, to refresh my skills of the language. For example, I changed the [frontend](https://github.com/hauraki/rides/tree/master/application/frontend) animations to work with [GSAP](https://greensock.com/gsap/),  refactored the [simulator](https://github.com/hauraki/rides/tree/master/application/simulator) to be more state-machine-like and moved SSL handling out of the Go-based [backend](https://github.com/hauraki/rides/tree/master/application/backend), among other things. I'll describe all of those in more detail below.
+Some of my additions here are about improving the code of the app, particularly the Typescript bits, to refresh my skills of the language. For example, I changed the [frontend](application/frontend) animations to work with [GSAP](https://greensock.com/gsap/),  refactored the [simulator](application/simulator) to be more state-machine-like and moved SSL handling out of the Go-based [backend](application/backend), among other things. I'll describe all of those in more detail below.
 
-The larger part though is about providing different ways to deploy the application: I wanted to deepen and apply my dev ops knowledge of technologies such as Docker Compose, Kubernetes and Terraform in practice. The work for these parts is strongly inspired by Ashley Davis' book [Bootstrapping Microservices](https://www.manning.com/books/bootstrapping-microservices-with-docker-kubernetes-and-terraform). It is very hands-on and I highly recommend you check it out. I began with [a simple deployment](https://github.com/hauraki/rides/tree/master/deployment/compose) to Docker Compose, and [another one](https://github.com/hauraki/rides/tree/master/deployment/minikube) to a local [Minikube](https://minikube.sigs.k8s.io/docs/start/) cluster. After that I provisioned the [necessary infrastructure](https://github.com/hauraki/rides/tree/master/infrastructure) in an Azure cloud environment using [Terraform](https://www.terraform.io/) and [deployed](https://github.com/hauraki/rides/tree/master/deployment/cloud) the app onto a Kubernetes cluster. Finally, I added  [workflows](https://github.com/hauraki/rides/tree/master/.github/workflows) for continuous delivery with [Github Actions](https://github.com/features/actions). Again, I'll describe all in more detail below.
+The larger part though is about providing different ways to deploy the application: I wanted to deepen and apply my dev ops knowledge of technologies such as Docker Compose, Kubernetes and Terraform in practice. The work for these parts is strongly inspired by Ashley Davis' book [Bootstrapping Microservices](https://www.manning.com/books/bootstrapping-microservices-with-docker-kubernetes-and-terraform). It is very hands-on and I highly recommend you check it out. I began with [a simple deployment](deployment/compose) to Docker Compose, and [another one](deployment/kubernetes/minikube/minikube) to a local [Minikube](https://minikube.sigs.k8s.io/docs/start/) cluster. After that I provisioned the [necessary infrastructure](infrastructure) in an Azure cloud environment using [Terraform](https://www.terraform.io/) and [deployed](deployment/kubernetes/cloud) the app onto a Kubernetes cluster. Finally, I added  [workflows](.github/workflows) for continuous delivery with [Github Actions](https://github.com/features/actions). Again, I'll describe all in more detail below.
 ## Getting started
 You can spin up the application locally using Docker Compose, in a few simple steps. Note that you will need [Docker Desktop](https://www.docker.com/products/docker-desktop) installed for this.
 
@@ -63,7 +63,7 @@ The actual map then becomes a simple composition of these components:
 ```
 ### Simulator
 #### Refactoring towards state machine
-The core of the simulator are the models for its two central entities: [drivers](https://github.com/hauraki/rides/blob/master/application/simulator/src/models/Driver.ts) and [customers](https://github.com/hauraki/rides/blob/master/application/simulator/src/models/Customer.ts). I refactored these to act more like state machines, so it would be easier to reason about their behavior. I found this important, as things tend to get more complex when asynchronous flows are introduced, e.g. when waiting for a match from the dispatcher or a new customer destination.
+The core of the simulator are the models for its two central entities: [drivers](application/simulator/src/models/Driver.ts) and [customers](application/simulator/src/models/Customer.ts). I refactored these to act more like state machines, so it would be easier to reason about their behavior. I found this important, as things tend to get more complex when asynchronous flows are introduced, e.g. when waiting for a match from the dispatcher or a new customer destination.
 ##### Driver
 |State |Description |Event |Target State |
 | --- | --- | --- | --- |
@@ -96,7 +96,7 @@ In order to better understand what is going on within the simulator at any given
 [D] ⬆️  Colin picks up Ryker at [ 55, 45 ]
 ```
 #### Automatic database setup
-One thing that is easy enough to do locally but becomes more tricky later in cloud contexts and possible collaboration with others is the preparation of the database: creating the necessary tables, and populating them with some useful data. While there are database migration tools for Node.js out there such as [node-pg-migrate](https://github.com/salsita/node-pg-migrate) that can help with this, I kept it very simple and pragmatic for my own purposes here and just added [an idempotent script](https://github.com/hauraki/rides/blob/master/application/simulator/src/data/prepareDatabase.ts) that runs every time the simulator starts. 
+One thing that is easy enough to do locally but becomes more tricky later in cloud contexts and possible collaboration with others is the preparation of the database: creating the necessary tables, and populating them with some useful data. While there are database migration tools for Node.js out there such as [node-pg-migrate](https://github.com/salsita/node-pg-migrate) that can help with this, I kept it very simple and pragmatic for my own purposes here and just added [an idempotent script](application/simulator/src/data/prepareDatabase.ts) that runs every time the simulator starts. 
 ### Backend
 #### Extracting TLS handling
 The original app contained the TLS handling directly in the backend service, and only for a production environment. I moved this entirely out of the backend and into a reverse proxy (see below) in front of it. The necessary certificate files will be generated automatically, and there will be TLS support for all environments (i.e. including local development with Docker Compose, or a local Minikube cluster). 
@@ -127,7 +127,7 @@ With this first local deployment, I wanted to make it really easy for other deve
 
 It supports **live-reloading**: the code of each service can be edited, and it will update automatically. This makes a lot of sense for development workflows, where quick feedback matters. This is also why there are two different Dockerfiles for each app service. There is a `Dockerfile-dev` with live-reloading support in Docker Compose, and there is a `Dockerfile-prod` optimized for performance and robustness in later production deployments.
 
-Besides the app services for frontend, simulator and backend, there are a few additional services in the [Compose file](https://github.com/hauraki/rides/blob/master/deployment/compose/docker-compose.yml).
+Besides the app services for frontend, simulator and backend, there are a few additional services in the [Compose file](deployment/compose/docker-compose.yml).
 
 First there is a Postgres database server: it is prepared automatically by creating the necessary tables and populating them with some test data.
 
@@ -189,11 +189,11 @@ kubectl logs -f -l app=simulator
 ```
 
 ### Cloud Kubernetes
-By now the app is already running in a local Kubernetes cluster. Time to move things into the cloud! Much of the Kubernetes config from the previous section can be re-used here, with only slight modifications. However, a whole new area needs to be considered now: infrastructure. In other words, the cloud resources such as virtual machines, database server, Kubernetes cluster, virtual network, container registry and other moving parts that actually allow the application to run in the cloud.
+By now the app is already running in a local Kubernetes cluster. Time to move things into the cloud! Much of the Kubernetes config from the previous section can be re-used here. However, a whole new area needs to be considered now: infrastructure. In other words, the cloud resources such as virtual machines, database server, Kubernetes cluster, virtual network, container registry and other moving parts that actually allow the application to run in the cloud.
 
-In the local setup, Minikube took care of most of these moving parts (virtual machine, Kubernetes cluster, virtual network). A container registry was not necessary yet. I only needed to add a Postgres database server and a local "DNS entry" in my `hosts` file, and that was it.
+In the local setup above, Minikube took care of most of these moving parts (virtual machine, Kubernetes cluster, virtual network). A container registry was not necessary yet. I only needed to add a Postgres database server and a local "DNS entry" in my `hosts` file, and that was it.
 
-The Rides app can be run with any of the big cloud service providers (AWS, Google Cloud, Azure, Digital Ocean etc.) - the infrastructure is pretty vanilla and contains no special components. I went with [Azure](https://azure.microsoft.com/) to gain some more experience with it (most of my past experience has been with AWS).
+Now, the Rides app can be run with any of the big cloud service providers (AWS, Google Cloud, Azure, Digital Ocean etc.) - the infrastructure is pretty vanilla and contains no special components. I went with [Azure](https://azure.microsoft.com/) to gain some more experience with it (most of my past experience has been with AWS).
 
 I could have just clicked together the necessary parts by hand in the Azure Portal, but I wanted to lay down the *infrastructure as code* with [Terraform](https://www.terraform.io/). It can be used to automate the provisioning and management of resources in any cloud.
 
@@ -242,14 +242,20 @@ terraform apply
 - the infrastructure is ready now 🎉
 ##### Kubernetes setup
 - [connect kubectl to your newly provisioned AKS cluster](https://learn.microsoft.com/en-us/azure/aks/learn/quick-kubernetes-deploy-cli#connect-to-the-cluster)
-- Prepare your `.env` file ([see above](#deployment)) and update your `.env` file with personal settings for:
+- [review and adjust your environment variables](#prepare-environment-variables-for-kubernetes), update your `.env` file with personal settings for:
 	- **CONTAINER_REGISTRY**: This is the domain of your registry as created above by Terraform. If you named it `my-rides`, then your value here would be `my-rides.azurecr.io`.
 	- **LETSENCRYPT_EMAIL**: We will set up [LetsEncrypt](https://letsencrypt.org/) in a bit to automatically provide TLS certificates for our app. Enter your mail address here for notifications related to your certificates.
 	- **CLOUD_DOMAIN**: The app an either be reached on a custom domain of your own (e.g. `rides.yourdomain.com`) or an Azure-managed FQDN (e.g. `rides.westeurope.cloudapp.azure.com`). Enter your intended domain here, it will be used both to set up the ingress and to generate suitable TLS config for it.
 	- **KC_CONTEXT_CLOUD**: The `kubectl` tool defines a context for each Kubernetes cluster it connects to. If you followed along with the previous Minikube section and created the infrastructure for your app named `rides` in this section, then the output of `kubectl config get-contexts` should show you two contexts: `minikube` and `rides`. In this variable here, enter the name of your cloud Azure cluster.
-- run the setup script to deploy an [nginx ingress controller](https://kubernetes.github.io/ingress-nginx/):
+
+- create a secret for your database connection string, note that you will need to replace some values in the URL below with values that you used in your Terraform setup above:
 ```bash
-./deployment/cloud/setup.sh
+kubectl create secret generic rides-database --from-literal="connection-string='postgres://<db_username>:<db_password>@<app_name>-dbserver.postgres.database.azure.com:5432/rides?sslmode=require'"
+```
+
+- run the setup script to deploy an [nginx ingress controller](https://kubernetes.github.io/ingress-nginx/) and deploy the first revision of each service:
+```bash
+./deployment/kubernetes/cloud/setup.sh
 ```
 
 - [Set up TLS with the ingress controller ](https://learn.microsoft.com/en-us/azure/aks/ingress-tls?tabs=azure-cli). This is probably the most complex step here (and I have not found a way yet to automate it). A few things to note here when you go through the linked article:
@@ -257,22 +263,20 @@ terraform apply
 	- Whenever you see commands with the namespace `ingress-basic`, replace it with `ingress-nginx`, as that is the namespace where the script from the previous script deployed the controller.
 	- The article gives you a choice between static or dynamic public IP address. I went with a dynamic IP, as it saves some configuration. Azure's naming is a bit confusing, as the dynamic IP will remain static for the lifespan of the ingress controller, which is good enough here, but it will not remain when you delete the controller.
 	- I went for a custom domain name, but you can also use an Azure-based FQDN when you do not have a domain of your own at your disposal.
-	- In the section "Update your ingress route", do not follow their "Hello World" example, but instead apply the changes to [this ingress manifest](https://github.com/hauraki/rides/blob/master/deployment/cloud/ingress.yml).
-- follow the instructions in the [secrets manifest](https://github.com/hauraki/rides/blob/master/deployment/cloud/secrets.example.yml) to set up a secret for the Postgres database connection
+	- In the section "Update your ingress route", do not follow their "Hello World" example, but instead apply the changes to [this ingress manifest](deployment/kubernetes/cloud/ingress.yml).
+
 ##### Kubernetes deployment
-- build images for all services and push them to the private container registry (the `VERSION` is used to tag the images):
+- to deploy a new version of a service, run [this deploy script](deployment/kubernetes/cloud/deploy.sh) with a `VERSION` of your choice (it is used to tag the image) and the service name (`simulator`, `frontend` or `backend`):
 ```bash
-VERSION=1 ./deployment/cloud/publish.sh
+VERSION=2 ./deployment/kubernetes/cloud/deploy.sh simulator
 ```
-- finally, deploy the images to the Kubernetes cluster in the cloud:
-```bash
-VERSION=1 ./deployment/cloud/deploy.sh
-```
-- check the three pods for frontend, simulator and backend are running with:
+- open the app in your browser (on your own configured domain name) 🎉
+
+- check the three pods for frontend, simulator and backend are running:
 ```bash
 kubectl get pods
 ```
-- open the app in your browser, on your previously configured domain 🎉
+
 - check the live logs from the simulator service:
 ```bash
 kubectl logs -f -l app=simulator
@@ -294,7 +298,7 @@ I decided to go with [Github Actions](https://github.com/features/actions), as t
 
 Many CD services come with an assumption of (only) one deployment workflow per code repository. The Rides app here is hosted in a [monorepo](https://monorepo.tools/) though with multiple services, and I would like to have independent deployment workflows for each service. Turns out this is easy to do with Github Actions!
 
-I defined [workflows](https://github.com/hauraki/rides/tree/master/.github/workflows) for each service (frontend, simulator, backend) that are triggered whenever a change to the according service directory (within the `application` parent directory) is pushed. Each of the services can also be easily deployed with a button click in the Github Actions UI.
+I defined [workflows](.github/workflows) for each service (frontend, simulator, backend) that are triggered whenever a change to the according service directory (within the `application` parent directory) is pushed. Each of the services can also be easily deployed with a button click in the Github Actions UI.
 
 In order to get these workflows working in your own repo, you would need to set up a few variables and secrets within the config of your repo:
 - **CONTAINER_REGISTRY** variable: the domain of your private container registry, see the [Cloud Kubernetes](#cloud-kubernetes) section above for details

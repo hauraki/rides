@@ -3,12 +3,13 @@
 #
 # Usage:
 #
-#   ./deployment/kubernetes/minikube/deploy.sh simulator
+#   VERSION=2 ./deployment/kubernetes/minikube/deploy.sh simulator
 #
 
 set -u # or set -o nounset
 : "$CONTAINER_REGISTRY"
-: ${VERSION:=latest}
+: "$VERSION"
+: ${FULL_DEPLOY:=0}
 : "$1"
 
 # make VERSION available to child processes

@@ -34,6 +34,7 @@ rm $MINIKUBE_HOST.pem $MINIKUBE_HOST-key.pem
 kubectl create secret generic rides-database --from-literal="connection-string=$MINIKUBE_POSTGRES_URL"
 
 # build and deploy the first revision of each microservice
+echo "Deploying the first revision of each microservice..."
 VERSION=1 FULL_DEPLOY=1 ./deployment/kubernetes/minikube/deploy.sh simulator
 VERSION=1 FULL_DEPLOY=1 ./deployment/kubernetes/minikube/deploy.sh backend
 VERSION=1 FULL_DEPLOY=1 ./deployment/kubernetes/minikube/deploy.sh frontend
