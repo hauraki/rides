@@ -32,8 +32,7 @@ type Customer struct {
 }
 
 func enableCors(w *http.ResponseWriter) {
-	// allow access from local development server
-	(*w).Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }
 
 func getDrivers(w http.ResponseWriter, req *http.Request) {
@@ -83,7 +82,7 @@ func getCustomers(w http.ResponseWriter, req *http.Request) {
 }
 
 func getVersion(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprint(w, "version endpoint for testing, with CD!")
+	fmt.Fprint(w, "version endpoint for testing")
 }
 
 func main() {
