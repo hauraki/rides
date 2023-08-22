@@ -1,26 +1,36 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: simulator
+  name: backend
 spec:
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
-      app: simulator
+      app: backend
   template:
     metadata:
       labels:
-        app: simulator
+        app: backend
     spec:
       containers:
-        - name: simulator
-          image: $CONTAINER_REGISTRY/simulator:$VERSION
-          imagePullPolicy: IfNotPresent
+        - name: backend
+          image: $CONTAINER_REGISTRY/backend:$VERSION
+          imagePullPolicy: $IMAGE_PULL_POLICY
           env:
             - name: POSTGRES_URL
               valueFrom:
                 secretKeyRef:
                   name: rides-database
                   key: connection-string
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080

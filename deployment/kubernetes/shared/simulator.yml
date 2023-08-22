@@ -17,14 +17,10 @@ spec:
       containers:
         - name: simulator
           image: $CONTAINER_REGISTRY/simulator:$VERSION
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: $IMAGE_PULL_POLICY
           env:
             - name: POSTGRES_URL
               valueFrom:
                 secretKeyRef:
                   name: rides-database
                   key: connection-string
-            # - name: RESET_CUSTOMERS
-            #   value: "true"
-            # - name: RESET_DRIVERS
-            #   value: "true"
