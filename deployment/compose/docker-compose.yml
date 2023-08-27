@@ -20,7 +20,7 @@ services:
       context: ../../application/backend
       dockerfile: Dockerfile-dev
     volumes:
-      - ../../application/backend:/app
+      - ../../application/backend:/backend
     ports:
       - 8080:8080
     environment:
@@ -29,6 +29,9 @@ services:
       VIRTUAL_DEST: /
       SELF_SIGNED_HOST: ${VIRTUAL_HOST}
       POSTGRES_URL: ${POSTGRES_URL}
+    depends_on:
+      db:
+        condition: service_healthy
   
   frontend:
     restart: always
@@ -52,6 +55,11 @@ services:
       - app-db:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   
   nginx-proxy:
     restart: always
