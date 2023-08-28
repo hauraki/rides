@@ -28,14 +28,12 @@ interface DriverRecord {
 export default class Driver {
   public id!: string;
   public name!: string;
-  public rideStatus = "idle";
+  public status!: string;
   public _location: Point | null = null;
   public _path: Path | null = null;
   public pathIndex: number | null = null;
   public customerId: string | null = null;
   public customerName: string | null = null;
-
-  private customerRequested = false;
 
   constructor(record: DriverRecord) {
     Object.assign(this, record);
@@ -46,17 +44,6 @@ export default class Driver {
     const client = getClient();
     const res = await client.query<DriverRecord>("SELECT * FROM drivers");
     return res.rows.map((record) => new Driver(record));
-  }
-
-  public get status() {
-    if (
-      this.rideStatus === "idle" &&
-      !this.customerRequested &&
-      !this.customerId
-    )
-      return "off";
-
-    return this.rideStatus;
   }
 
   async simulate() {
@@ -82,7 +69,7 @@ export default class Driver {
       path_digest = $5,
       customer_id = $6,
       customer_name = $7,
-      ride_status = $8
+      status = $8
       WHERE id = $9
       `,
       [
@@ -93,7 +80,7 @@ export default class Driver {
         this.pathDigest,
         this.customerId,
         this.customerName,
-        this.rideStatus,
+        this.status,
         this.id,
       ]
     );
@@ -108,13 +95,12 @@ export default class Driver {
   }
 
   private reset() {
-    this.rideStatus = "idle";
+    this.status = "off";
     this.customerId = null;
     this.customerName = null;
     this.path = null;
     this.pathIndex = null;
     this.update();
-    this.customerRequested = false;
   }
 
   private move() {
@@ -141,25 +127,26 @@ export default class Driver {
   // ---------- state event handlers ----------
 
   private requestCustomer() {
-    this.customerRequested = true;
     dispatcher.send({
       event: "requestCustomer",
       data: pick(this, ["id", "name", "location"]),
     });
+    this.status = "idle";
+    this.update();
     this.log("🙋", "requests customer from", this.location);
   }
 
   public match(customer: Customer) {
     this.customerId = customer.id;
     this.customerName = customer.name;
-    this.rideStatus = "pickup";
+    this.status = "pickup";
     this.update();
     this.log("🤝", "matches with", this.customerName);
   }
 
   private pickup() {
     this.log("⬆️ ", "picks up", this.customerName, "at", this.location);
-    this.rideStatus = "enroute";
+    this.status = "enroute";
     this.path = null;
     this.pathIndex = null;
     this.update();
@@ -197,10 +184,6 @@ export default class Driver {
   }
 
   // aliases, to handle snake-cased db columns in Object.assign
-  public set ride_status(rideStatus: string) {
-    this.rideStatus = rideStatus;
-  }
-
   public set path_index(pathIndex: number | null) {
     this.pathIndex = pathIndex;
   }
