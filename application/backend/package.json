@@ -26,7 +26,14 @@
     "migrate:latest:dev": "NODE_OPTIONS='--loader ts-node/esm' knex --knexfile src/database/knexfile.ts migrate:latest",
     "migrate:rollback:dev": "NODE_OPTIONS='--loader ts-node/esm' knex --knexfile src/database/knexfile.ts migrate:rollback",
     "seed:make:dev": "NODE_OPTIONS='--loader ts-node/esm' knex --knexfile src/database/knexfile.ts seed:make",
-    "seed:run:dev": "NODE_OPTIONS='--loader ts-node/esm' knex --knexfile src/database/knexfile.ts seed:run"
+    "seed:run:dev": "NODE_OPTIONS='--loader ts-node/esm' knex --knexfile src/database/knexfile.ts seed:run",
+
+    "build": "tsc",
+
+    "start": "node dist/index.js",
+    "migrate:latest": "knex --knexfile dist/database/knexfile.js migrate:latest",
+    "migrate:rollback": "knex --knexfile dist/database/knexfile.js migrate:rollback",
+    "seed:run": "knex --knexfile dist/database/knexfile.js seed:run"
   },
   "type": "module"
 }

@@ -1,4 +1,5 @@
 import * as knexPkg from "knex";
+// @ts-ignore:next-line
 const { knex } = knexPkg.default;
 import pg from "pg";
 
